@@ -1,0 +1,6 @@
+1) Donkey doit sauter differement quand il est sout la cle
+
+/* BUG SECTION */
+
+Pour le segfault quand on appuie a gauche, en faite nos appel "setgrillejeu" font n'importe quoi et je suspecte un debordement de tableau qui fait
+que soit les images disparraissent de lécran soit un segfault si trop loin. J'ai donc commenter tout les appels et tout marche comme il faut...
