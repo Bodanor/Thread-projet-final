@@ -19,6 +19,6 @@ clean:
 	@rm -f $(OBJS) core
 
 clobber:	clean
-	@rm -f tags $(PROGRAMS)   
+	@rm -f tags $(PROGRAMS) 
  
 
