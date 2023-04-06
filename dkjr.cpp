@@ -87,10 +87,11 @@ typedef struct
 
 int main(int argc, char *argv[])
 {
+	int nbr_vies = 3;
 
 	ouvrirFenetreGraphique();
-
-	afficherCage(2);
+	afficherCage(1);
+ 	afficherCage(2);
 	afficherCage(3);
 	afficherCage(4);
 
@@ -105,10 +106,9 @@ int main(int argc, char *argv[])
 	afficherCorbeau(10, 2);
 	afficherCorbeau(16, 1);
 
-	effacerCarres(9, 10, 2, 1);
+	effacerCarres(9, 10, 2, 1); 
 
-	afficherEchec(1);
-	afficherScore(1999);
+	
 
 	if (pthread_create(&threadCle, NULL, FctThreadCle, NULL) != 0)
 	{
@@ -118,15 +118,21 @@ int main(int argc, char *argv[])
 	{
 		perror("Thread évenements erreur !\n");
 	}
-	if (pthread_create(&threadDKJr, NULL, FctThreadDKJr, NULL) != 0)
-	{
-		perror("Thread évenements erreur !\n");
-	}
-
 	pthread_mutex_init(&mutexEvenement, NULL);
+	while (nbr_vies > 0) {
+		
+		if (pthread_create(&threadDKJr, NULL, FctThreadDKJr, NULL) != 0)
+		{
+			perror("Thread évenements erreur !\n");
+		}
 
-	pthread_join(threadDKJr, NULL);
-	
+		pthread_join(threadDKJr, NULL);
+		
+		
+		afficherEchec(nbr_vies);
+		nbr_vies--;
+	}
+	pthread_join(threadEvenements, NULL);
 }
 
 // -------------------------------------
@@ -284,6 +290,7 @@ void *FctThreadDKJr(void *p)
 	etatDKJr = LIBRE_BAS;
 	positionDKJr = 1;
 	pthread_mutex_unlock(&mutexGrilleJeu);
+
 	while (on)
 	{
 		pause();
@@ -457,9 +464,12 @@ void *FctThreadDKJr(void *p)
 					
 					effacerCarres(6, (positionDKJr * 2) + 7, 3, 2);
 					afficherDKJr(11, 7,13);
+					
+					nanosleep(&temps, NULL); // Le temps que Dkjr renaisse de ses cendres
 
-					pthread_exit(0);
-								}
+					effacerCarres(11, 7, 2, 2); // Effacement du dkjr qui se crash dans le buisson
+					on = 0;
+				}
 				break;
 			case SDLK_RIGHT:
 				if (positionDKJr < 7)
@@ -503,7 +513,10 @@ void *FctThreadDKJr(void *p)
 	}
 	pthread_exit(0);
 }
-
+void *FctThreadDK(void *p)
+{
+	
+}
 void HandlerSIGQUIT(int sig)
 {
 	printf("SIGQUIT pour le thread (%u)\n", (unsigned int)pthread_self());
