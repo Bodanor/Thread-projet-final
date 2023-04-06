@@ -82,12 +82,11 @@ typedef struct
 	bool haut;
 	int position;
 } S_CROCO;
-
+int nbr_vies_perdus = 0;
 // ------------------------------------------------------------------------
 
 int main(int argc, char *argv[])
 {
-	int nbr_vies = 3;
 
 	ouvrirFenetreGraphique();
 	afficherCage(1);
@@ -106,31 +105,34 @@ int main(int argc, char *argv[])
 	afficherCorbeau(10, 2);
 	afficherCorbeau(16, 1);
 
-	effacerCarres(9, 10, 2, 1); 
-
-	
+	//effacerCarres(9, 10, 2, 1); 
 
 	if (pthread_create(&threadCle, NULL, FctThreadCle, NULL) != 0)
 	{
 		perror("Thread clé erreur !\n");
-	}
+	}	
+	
+
 	if (pthread_create(&threadEvenements, NULL, FctThreadEvenements, NULL) != 0)
 	{
 		perror("Thread évenements erreur !\n");
 	}
+	
 	pthread_mutex_init(&mutexEvenement, NULL);
-	while (nbr_vies > 0) {
-		
+	pthread_mutex_init(&mutexDK, NULL);
+	pthread_cond_init(&condDK, NULL);
+	while (nbr_vies_perdus != 3) {
+
 		if (pthread_create(&threadDKJr, NULL, FctThreadDKJr, NULL) != 0)
 		{
 			perror("Thread évenements erreur !\n");
 		}
 
 		pthread_join(threadDKJr, NULL);
+
+		if(nbr_vies_perdus!=0)//Eviter si on réussit du premier coup que l'affichage affiche un éche
+			afficherEchec(nbr_vies_perdus);
 		
-		
-		afficherEchec(nbr_vies);
-		nbr_vies--;
 	}
 	pthread_join(threadEvenements, NULL);
 }
@@ -178,51 +180,44 @@ void *FctThreadCle(void *p)
 
 	while (1)
 	{
+			
+		setGrilleJeu(0, 1, CLE);
 		afficherGrilleJeu();
-		grilleJeu[0][1].type = CLE;
-		grilleJeu[0][1].tid = pthread_self();
-		setGrilleJeu(12, 4, CLE, pthread_self());
 		afficherCle(1);
 		nanosleep(&temps, NULL);
 		effacerCarres(3, 11, 1, 2);
 		effacerCarres(4, 12, 1, 1);
+		
+		/* Si catch de la cle */
+		if (grilleJeu[0][1].type == DKJR){
+			effacerCarres(3, 11, 1, 4);
+			nanosleep(&temps, NULL);
+			nanosleep(&temps, NULL);
+			
+		}
 
+		setGrilleJeu(0, 1, VIDE);
 		afficherGrilleJeu();
-		grilleJeu[0][1].type = VIDE;
-		grilleJeu[0][1].tid = pthread_self();
-		setGrilleJeu(12, 4, CLE, pthread_self());
 		afficherCle(2);
 		nanosleep(&temps, NULL);
 		effacerCarres(3, 12, 2, 2);
 
 		afficherGrilleJeu();
-		grilleJeu[0][1].type = VIDE;
-		grilleJeu[0][1].tid = pthread_self();
-		setGrilleJeu(12, 3, CLE, pthread_self());
 		afficherCle(3);
 		nanosleep(&temps, NULL);
 		effacerCarres(3, 13, 2, 2);
 
 		afficherGrilleJeu();
-		grilleJeu[0][1].type = VIDE;
-		grilleJeu[0][1].tid = pthread_self();
-		setGrilleJeu(12, 3, CLE, pthread_self());
 		afficherCle(4);
 		nanosleep(&temps, NULL);
 		effacerCarres(2, 13, 3, 3);
 
 		afficherGrilleJeu();
-		grilleJeu[0][1].type = VIDE;
-		grilleJeu[0][1].tid = pthread_self();
-		setGrilleJeu(12, 3, CLE, pthread_self());
 		afficherCle(3);
 		nanosleep(&temps, NULL);
 		effacerCarres(3, 13, 2, 2);
 
 		afficherGrilleJeu();
-		grilleJeu[0][1].type = VIDE;
-		grilleJeu[0][1].tid = pthread_self();
-		setGrilleJeu(12, 4, CLE, pthread_self());
 		afficherCle(2);
 		nanosleep(&temps, NULL);
 		effacerCarres(3, 12, 2, 2);
@@ -452,23 +447,45 @@ void *FctThreadDKJr(void *p)
 				}
 				else {
 					temps.tv_sec = 0;
-					temps.tv_nsec = 500000000;
+					temps.tv_nsec = 700000000;
 					effacerCarres(7, (positionDKJr * 2) + 7, 2, 2);
 					afficherDKJr(6, (positionDKJr * 2) + 7,9);
-					nanosleep(&temps, NULL);
-							
-					positionDKJr--;	
-					effacerCarres(5, (positionDKJr * 2) + 8, 3, 2);
-					afficherDKJr(7, (positionDKJr * 2) + 7,12);
-					nanosleep(&temps, NULL);
-					
-					effacerCarres(6, (positionDKJr * 2) + 7, 3, 2);
-					afficherDKJr(11, 7,13);
-					
-					nanosleep(&temps, NULL); // Le temps que Dkjr renaisse de ses cendres
+					setGrilleJeu(0, positionDKJr, DKJR);
 
-					effacerCarres(11, 7, 2, 2); // Effacement du dkjr qui se crash dans le buisson
+					
+					/* Si il attrape la clé */
+					if (grilleJeu[0][1].type == CLE) {
+						setGrilleJeu(0, 1, DKJR);
+						nanosleep(&temps, NULL);
+						
+						
+						positionDKJr--;	
+						effacerCarres(5, (positionDKJr * 2) + 8, 3, 2);
+						afficherDKJr(6, (positionDKJr * 2) + 7,10);
+						nanosleep(&temps, NULL);
+
+						effacerCarres(3, 11, 3, 3);
+						afficherCage(4);
+						
+					}
+					else {
+						nanosleep(&temps, NULL);
+						positionDKJr--;	
+						effacerCarres(5, (positionDKJr * 2) + 8, 3, 2);
+						afficherDKJr(7, (positionDKJr * 2) + 7,12);
+						nanosleep(&temps, NULL);
+						
+						effacerCarres(6, (positionDKJr * 2) + 7, 3, 2);
+						afficherDKJr(11, 7,13);
+						
+						nanosleep(&temps, NULL); // Le temps que Dkjr renaisse de ses cendres
+
+						effacerCarres(11, 7, 2, 2); // Effacement du dkjr qui se crash dans le buisson
+						
+						nbr_vies_perdus++;
+					}
 					on = 0;
+					setGrilleJeu(0, positionDKJr + 1);
 				}
 				break;
 			case SDLK_RIGHT:
