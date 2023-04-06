@@ -90,9 +90,10 @@ int main(int argc, char *argv[])
 
 	ouvrirFenetreGraphique();
 	afficherCage(1);
- 	afficherCage(2);
+	afficherCage(2);
 	afficherCage(3);
 	afficherCage(4);
+
 
 	afficherRireDK();
 
@@ -105,13 +106,14 @@ int main(int argc, char *argv[])
 	afficherCorbeau(10, 2);
 	afficherCorbeau(16, 1);
 
-	//effacerCarres(9, 10, 2, 1); 
 
 	if (pthread_create(&threadCle, NULL, FctThreadCle, NULL) != 0)
 	{
 		perror("Thread clé erreur !\n");
 	}	
 	
+	if(pthread_create(&threadDK, NULL, FctThreadDK, NULL) != 0)
+		perror("Thread clé erreur !\n");
 
 	if (pthread_create(&threadEvenements, NULL, FctThreadEvenements, NULL) != 0)
 	{
@@ -465,8 +467,12 @@ void *FctThreadDKJr(void *p)
 						nanosleep(&temps, NULL);
 
 						effacerCarres(3, 11, 3, 3);
-						afficherCage(4);
-						
+						afficherCage(4);//Réafficher la cage lorsque dkjr attrape la clef
+
+						pthread_mutex_lock(&mutexDK);
+						MAJDK = true;
+						pthread_mutex_unlock(&mutexDK);
+						pthread_cond_signal(&condDK);
 					}
 					else {
 						nanosleep(&temps, NULL);
@@ -533,6 +539,33 @@ void *FctThreadDKJr(void *p)
 void *FctThreadDK(void *p)
 {
 	
+	
+		pthread_mutex_lock(&mutexDK);
+		while(MAJDK == true)
+			pthread_cond_wait(&condDK, &mutexDK);
+		pthread_mutex_unlock(&mutexDK);
+		effacerCarres(2, 7, 2, 2);
+
+
+		pthread_mutex_lock(&mutexDK);
+		while(MAJDK == true)
+			pthread_cond_wait(&condDK, &mutexDK);
+		pthread_mutex_unlock(&mutexDK);
+		effacerCarres(2, 9, 2, 2);
+
+
+		pthread_mutex_lock(&mutexDK);
+		while(MAJDK == true)
+			pthread_cond_wait(&condDK, &mutexDK);
+		pthread_mutex_unlock(&mutexDK);
+		effacerCarres(4, 7, 2, 2);
+
+		pthread_mutex_lock(&mutexDK);
+		while(MAJDK == true)
+			pthread_cond_wait(&condDK, &mutexDK);
+		pthread_mutex_unlock(&mutexDK);
+		effacerCarres(4, 9, 2, 2);
+		
 }
 void HandlerSIGQUIT(int sig)
 {
