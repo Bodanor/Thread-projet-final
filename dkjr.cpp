@@ -87,6 +87,8 @@ int nbr_vies_perdus = 0;
 
 int main(int argc, char *argv[])
 {
+	struct sigaction act;
+	sigset_t mask;
 
 	ouvrirFenetreGraphique();
 	afficherCage(1);
@@ -102,6 +104,17 @@ int main(int argc, char *argv[])
 
 	afficherCorbeau(10, 2);
 	afficherCorbeau(16, 1);
+
+	act.sa_flags = 0;
+	act.sa_handler = HandlerSIGALRM;
+	sigemptyset(&act.sa_mask);
+	sigaction(SIGALRM, &act, NULL);
+	
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGALRM);
+	sigprocmask(SIG_BLOCK, &mask, NULL);
+
+	alarm(15);
 
 	pthread_mutex_init(&mutexEvenement, NULL);
 	pthread_mutex_init(&mutexDK, NULL);
@@ -120,6 +133,9 @@ int main(int argc, char *argv[])
 
 	if (pthread_create(&threadScore, NULL, FctThreadScore, NULL) != 0)
 		perror("Thread Score erreur !\n");
+
+	if (pthread_create(&threadEnnemis, NULL, FctThreadEnnemis, NULL) != 0)
+		perror("Thread Ennemis erreur !\n");
 
 	while (nbr_vies_perdus != 3)
 	{
@@ -610,8 +626,57 @@ void *FctThreadScore(void *p)
 		pthread_mutex_unlock(&mutexScore);
 	}
 }
+void *FctThreadEnnemis(void *)
+{
+	pthread_t ThreadCorbeau, ThreadCroco;
+	sigset_t mask;
+	srand(time(NULL));
+	int type_enemis;
+	struct timespec temps = {0, 0};
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGALRM);
+	sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
+
+	while (nbr_vies_perdus != 3)
+	{
+		type_enemis = rand() % 2;
+		if (type_enemis == 0) {
+			if (pthread_create(&ThreadCorbeau, NULL, FctThreadCorbeau, NULL) != 0)
+				perror("Thread corbeau erreur !\n");
+		}
+		else {
+			if (pthread_create(&ThreadCroco, NULL, FctThreadCroco, NULL) != 0)
+				perror("Thread croco erreur !\n");
+		}
+		temps.tv_sec = delaiEnnemis / 1000;
+		temps.tv_nsec = (delaiEnnemis % 1000)*1000000;
+		
+		nanosleep(&temps, NULL);
+		
+	}
+}
+void *FctThreadCorbeau(void *p)
+{
+	printf("Thread corbeau crée ! \n");
+}
+void *FctThreadCroco(void *p)
+{
+	printf("Thread croco crée ! \n");
+}
+
 void HandlerSIGQUIT(int sig)
 {
 	printf("SIGQUIT pour le thread (%u)\n", (unsigned int)pthread_self());
 	fflush(stdout);
+}
+void HandlerSIGALRM(int sig)
+{
+	
+	if (delaiEnnemis != 2500)
+	{
+		delaiEnnemis = delaiEnnemis - 250;
+		alarm(15);
+	}
 }
