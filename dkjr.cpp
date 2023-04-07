@@ -95,8 +95,6 @@ int main(int argc, char *argv[])
 	afficherCage(4);
 
 
-	afficherRireDK();
-
 	afficherCroco(11, 2);
 	afficherCroco(17, 1);
 	afficherCroco(0, 3);
@@ -106,6 +104,10 @@ int main(int argc, char *argv[])
 	afficherCorbeau(10, 2);
 	afficherCorbeau(16, 1);
 
+
+	pthread_mutex_init(&mutexEvenement, NULL);
+	pthread_mutex_init(&mutexDK, NULL);
+	pthread_cond_init(&condDK, NULL);
 
 	if (pthread_create(&threadCle, NULL, FctThreadCle, NULL) != 0)
 	{
@@ -120,9 +122,7 @@ int main(int argc, char *argv[])
 		perror("Thread évenements erreur !\n");
 	}
 	
-	pthread_mutex_init(&mutexEvenement, NULL);
-	pthread_mutex_init(&mutexDK, NULL);
-	pthread_cond_init(&condDK, NULL);
+	
 	while (nbr_vies_perdus != 3) {
 
 		if (pthread_create(&threadDKJr, NULL, FctThreadDKJr, NULL) != 0)
@@ -538,33 +538,48 @@ void *FctThreadDKJr(void *p)
 }
 void *FctThreadDK(void *p)
 {
+	struct timespec temps = {0, 700000000};
 	
+	pthread_mutex_lock(&mutexDK);
+	while(!MAJDK)
+		pthread_cond_wait(&condDK, &mutexDK);
+	pthread_mutex_unlock(&mutexDK);
+	effacerCarres(2, 7, 2, 2);
 	
-		pthread_mutex_lock(&mutexDK);
-		while(MAJDK == true)
-			pthread_cond_wait(&condDK, &mutexDK);
-		pthread_mutex_unlock(&mutexDK);
-		effacerCarres(2, 7, 2, 2);
+	MAJDK = false;
 
+	pthread_mutex_lock(&mutexDK);
+	while(!MAJDK)
+		pthread_cond_wait(&condDK, &mutexDK);
+	pthread_mutex_unlock(&mutexDK);
+	effacerCarres(2, 9, 2, 2);
 
-		pthread_mutex_lock(&mutexDK);
-		while(MAJDK == true)
-			pthread_cond_wait(&condDK, &mutexDK);
-		pthread_mutex_unlock(&mutexDK);
-		effacerCarres(2, 9, 2, 2);
+	MAJDK = false;
 
+	pthread_mutex_lock(&mutexDK);
+	while(!MAJDK)
+		pthread_cond_wait(&condDK, &mutexDK);
+	pthread_mutex_unlock(&mutexDK);
+	effacerCarres(4, 7, 2, 2);
+	
+	MAJDK = false;
 
-		pthread_mutex_lock(&mutexDK);
-		while(MAJDK == true)
-			pthread_cond_wait(&condDK, &mutexDK);
-		pthread_mutex_unlock(&mutexDK);
-		effacerCarres(4, 7, 2, 2);
+	pthread_mutex_lock(&mutexDK);
+	while(!MAJDK)
+		pthread_cond_wait(&condDK, &mutexDK);
+	pthread_mutex_unlock(&mutexDK);
+	effacerCarres(4, 9, 2, 3);
 
-		pthread_mutex_lock(&mutexDK);
-		while(MAJDK == true)
-			pthread_cond_wait(&condDK, &mutexDK);
-		pthread_mutex_unlock(&mutexDK);
-		effacerCarres(4, 9, 2, 2);
+	afficherRireDK();
+	nanosleep(&temps, NULL);
+	MAJDK = false;
+
+	effacerCarres(3, 8, 2, 2); // Supprimer le rire
+	afficherCage(1);
+	afficherCage(2);
+	afficherCage(3);
+	afficherCage(4);
+	
 		
 }
 void HandlerSIGQUIT(int sig)
