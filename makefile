@@ -1,6 +1,6 @@
 PRESENTATION=presentation
 
-CC = g++ -DSUN -I$(PRESENTATION)
+CC = g++-9 -DSUN -I$(PRESENTATION)
 OBJS = $(PRESENTATION)/presentation.o 
 PROGRAMS = dkjr
 
