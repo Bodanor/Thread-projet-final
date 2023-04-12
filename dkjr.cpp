@@ -451,7 +451,6 @@ void *FctThreadDKJr(void *p)
 			case SDLK_DOWN:
 				if (grilleJeu[3][positionDKJr].type == CROCO)
 				{
-					printf("Position dkjr = %d\n", (positionDKJr * 2) + 7);
 					pthread_kill(grilleJeu[3][positionDKJr].tid, SIGUSR2);
 					nbr_vies_perdus++;
 					effacerCarres(10, (positionDKJr * 2) + 7, 2, 2);
@@ -589,9 +588,10 @@ void *FctThreadDKJr(void *p)
 				{
 					if (positionDKJr == 6)
 					{
-
+						setGrilleJeu(1, positionDKJr);
 						effacerCarres(7, (positionDKJr * 2) + 7, 2, 2);
 						positionDKJr++;
+						setGrilleJeu(1, positionDKJr, DKJR);
 						afficherDKJr(7, (positionDKJr * 2) + 7, 6);
 					}
 
@@ -611,11 +611,21 @@ void *FctThreadDKJr(void *p)
 			switch (evenement)
 			{
 			case SDLK_DOWN:
-				setGrilleJeu(0, positionDKJr);
-				etatDKJr = LIBRE_HAUT;
-				effacerCarres(6, (positionDKJr * 2) + 7, 2, 2);
-				setGrilleJeu(1, positionDKJr, DKJR);
-				afficherDKJr(7, (positionDKJr * 2) + 7, ((positionDKJr - 1) % 4) + 1);
+				if (grilleJeu[1][positionDKJr].type == CROCO)
+				{
+					pthread_kill(grilleJeu[1][positionDKJr].tid, SIGHUP);
+					nbr_vies_perdus++;
+					effacerCarres(6, (positionDKJr * 2) + 7, 2, 2);
+					setGrilleJeu(1, positionDKJr);
+					on = 0;
+				}
+				else {
+					setGrilleJeu(0, positionDKJr);
+					etatDKJr = LIBRE_HAUT;
+					effacerCarres(6, (positionDKJr * 2) + 7, 2, 2);
+					setGrilleJeu(1, positionDKJr, DKJR);
+					afficherDKJr(7, (positionDKJr * 2) + 7, ((positionDKJr - 1) % 4) + 1);
+				}
 				break;
 			}
 			break;
@@ -806,76 +816,126 @@ void *FctThreadCroco(void *p)
 		pSpec->haut = 1;
 		pSpec->position = 2;
 	}
+	
+	pSpec->haut = 1;
+	pSpec->position = 2;
 
-	while (pSpec->position != 1)
+	while(pSpec->position != 7)
 	{
-		
-		if (pSpec->haut == 1)
+		if (grilleJeu[1][pSpec->position].type == DKJR)
 		{
-			if (pSpec->position == 8)
-			{
-				afficherCroco(pSpec->position, 3);
-				pSpec->position += 1;
-			}
-			else
-			{
-				if (grilleJeu[1][pSpec->position].type == DKJR)
-				{
-					pthread_kill(threadDKJr, SIGHUP);
-					nbr_vies_perdus++;
-					pthread_exit(0);
-				}
-				else
-				{
-					afficherCroco(pSpec->position * 2 + 7, (pSpec->position % 2) + 1);
-					setGrilleJeu(1, pSpec->position, CROCO, pthread_self());
-					pSpec->position += 1;
-				}
-			}
-			
+			pthread_kill(threadDKJr, SIGHUP);
+			nbr_vies_perdus++;
+			pthread_exit(0);
 		}
 		else
 		{
-			if (grilleJeu[3][pSpec->position-1].type == DKJR)
-			{
-				//WALLAH JE PUE LE CACA (martin)
-				pthread_kill(threadDKJr, SIGCHLD);
-				
-				nbr_vies_perdus++;
-				pthread_exit(0);
-			}
-			else
-			{
-				pSpec->position -= 1;
-				afficherCroco((pSpec->position * 2) + 8, (pSpec->position % 2) + 4);
-				setGrilleJeu(3, pSpec->position, CROCO, pthread_self());
-			}
-
+			afficherCroco(pSpec->position * 2 + 7, (pSpec->position % 2) + 1);
+			setGrilleJeu(1, pSpec->position, CROCO, pthread_self());
 		}
+		
 		nanosleep(&temps, NULL);
 
-		/* Effacement du précedent crocro */
-		if (pSpec->haut == 1)
+		effacerCarres(8, (pSpec->position * 2) + 7, 1, 1);
+		setGrilleJeu(1, pSpec->position);
+		pSpec->position += 1;
+	}
+	
+	afficherCroco(pSpec->position, 3);
+	nanosleep(&temps, NULL);
+	effacerCarres(9, 23, 1, 1);
+
+	while(pSpec->position!=0)
+	{
+
+		if (grilleJeu[3][pSpec->position].type == DKJR)
 		{
-			if (pSpec->position > 8)
-			{
-				pSpec->position -= 1;
-				effacerCarres(9, 23, 1, 1);
-				pSpec->haut = 0;
-				setGrilleJeu(3, pSpec->position, CROCO, pthread_self());
-			}
-			else
-			{
-				effacerCarres(8, (pSpec->position * 2) + 5, 1, 1);
-				setGrilleJeu(1, pSpec->position - 1);
-			}
-		}
+			pthread_kill(threadDKJr, SIGCHLD);
+			nbr_vies_perdus++;
+			pthread_exit(0);
+	 	}
 		else
 		{
-			effacerCarres(12, (pSpec->position * 2) + 8, 1, 1);
-			setGrilleJeu(3, pSpec->position);
+			afficherCroco((pSpec->position * 2) + 8, (pSpec->position % 2) + 4);
+			setGrilleJeu(3, pSpec->position, CROCO, pthread_self());
 		}
+
+		nanosleep(&temps, NULL);
+
+		effacerCarres(12, (pSpec->position * 2) + 8, 1, 1);
+		setGrilleJeu(3, pSpec->position);
+		pSpec->position -= 1;
 	}
+	
+	// while (pSpec->position != 1)
+	// {
+		
+	// 	if (pSpec->haut == 1)
+	// 	{
+	// 		if (pSpec->position == 8)
+	// 		{
+	// 			afficherCroco(pSpec->position, 3);
+	// 			pSpec->position += 1;
+	// 		}
+	// 		else
+	// 		{
+	// 			if (grilleJeu[1][pSpec->position].type == DKJR)
+	// 			{
+	// 				pthread_kill(threadDKJr, SIGHUP);
+	// 				//nbr_vies_perdus++;
+	// 				pthread_exit(0);
+	// 			}
+	// 			else
+	// 			{
+	// 				afficherCroco(pSpec->position * 2 + 7, (pSpec->position % 2) + 1);
+	// 				setGrilleJeu(1, pSpec->position, CROCO, pthread_self());
+	// 				pSpec->position += 1;
+	// 			}
+	// 		}
+			
+	// 	}
+	// 	else
+	// 	{
+	// 		if (grilleJeu[3][pSpec->position-1].type == DKJR)
+	// 		{
+	// 			//WALLAH JE PUE LE CACA (martin)
+	// 			pthread_kill(threadDKJr, SIGCHLD);
+				
+	// 			//nbr_vies_perdus++;
+	// 			pthread_exit(0);
+	// 		}
+	// 		else
+	// 		{
+	// 			pSpec->position -= 1;
+	// 			afficherCroco((pSpec->position * 2) + 8, (pSpec->position % 2) + 4);
+	// 			setGrilleJeu(3, pSpec->position, CROCO, pthread_self());
+	// 		}
+
+	// 	}
+	// 	nanosleep(&temps, NULL);
+
+	// 	/* Effacement du précedent crocro */
+	// 	if (pSpec->haut == 1)
+	// 	{
+	// 		if (pSpec->position > 8)
+	// 		{
+	// 			pSpec->position -= 1;
+	// 			effacerCarres(9, 23, 1, 1);
+	// 			pSpec->haut = 0;
+	// 			setGrilleJeu(3, pSpec->position-1, CROCO, pthread_self());
+	// 		}
+	// 		else
+	// 		{
+	// 			effacerCarres(8, (pSpec->position * 2) + 5, 1, 1);
+	// 			setGrilleJeu(1, pSpec->position - 1);
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		effacerCarres(12, (pSpec->position * 2) + 8, 1, 1);
+	// 		setGrilleJeu(3, pSpec->position);
+	// 	}
+	// }
 }
 
 void HandlerSIGQUIT(int sig)
@@ -924,17 +984,20 @@ void HandlerSIGCHLD(int sig)
 
 	effacerCarres(9, (positionDKJr * 2) + 7, 4, 4);
 	setGrilleJeu(2, positionDKJr);
+	
 	pthread_mutex_unlock(&mutexEvenement);
 	pthread_mutex_unlock(&mutexGrilleJeu);
-
+	
 	pthread_exit(0);
 }
 void HandlerSIGHUP(int sig)
 {
 	effacerCarres(7, (positionDKJr * 2) + 7, 4, 4);
 	setGrilleJeu(1, positionDKJr);
+	
 	pthread_mutex_unlock(&mutexEvenement);
 	pthread_mutex_unlock(&mutexGrilleJeu);
+
 	pthread_exit(0); 
 }
 void DestructeurVS(void *p)
