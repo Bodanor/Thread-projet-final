@@ -718,18 +718,18 @@ void *FctThreadCorbeau(void *p)
 			pthread_exit(0);
 		}
 
-		afficherCorbeau(position, (*(int*)pthread_getspecific(keySpec) % 2) + 1);
-		setGrilleJeu(2, *(int*)pthread_getspecific(keySpec), CORBEAU,pthread_self());
+		afficherCorbeau(position, (*pSpec % 2) + 1);
+		setGrilleJeu(2, *pSpec, CORBEAU,pthread_self());
 		
 		if (pthread_setspecific(keySpec, pSpec))
 			perror("Erreur de setspecific\n");
 		
 		position = position + 2;
-		*(int*)pthread_getspecific(keySpec)+=1;
+		(*pSpec)++;
 		
 		nanosleep(&temps, NULL);
 		
-		setGrilleJeu(2, *(int*)pthread_getspecific(keySpec) -1);
+		setGrilleJeu(2, *pSpec -1);
 		effacerCarres(9, position -2, 2, 2);
 	}
 }
