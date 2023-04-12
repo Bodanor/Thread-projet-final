@@ -42,6 +42,7 @@ void HandlerSIGQUIT(int);
 void HandlerSIGCHLD(int);
 void HandlerSIGHUP(int);
 
+void initCle();
 void DestructeurVS(void *p);
 
 pthread_t threadCle;
@@ -60,6 +61,7 @@ pthread_mutex_t mutexEvenement;
 pthread_mutex_t mutexScore;
 
 pthread_key_t keySpec;
+pthread_once_t controleur = PTHREAD_ONCE_INIT;
 
 bool MAJDK = false;
 int score = 0;
@@ -102,8 +104,6 @@ int main(int argc, char *argv[])
 	afficherCroco(12, 5);
 	afficherCroco(18, 4);
 
-	afficherCorbeau(10, 2);
-	afficherCorbeau(16, 1);
 
 	act.sa_flags = 0;
 	act.sa_handler = HandlerSIGALRM;
@@ -121,6 +121,10 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&mutexScore, NULL);
 	pthread_cond_init(&condDK, NULL);
 	pthread_cond_init(&condScore, NULL);
+
+	if (pthread_key_create(&keySpec, DestructeurVS) != 0)
+		perror("Impossible de cree la variable spécifique !\n");
+
 
 	if (pthread_create(&threadCle, NULL, FctThreadCle, NULL) != 0)
 		perror("Thread clé erreur !\n");
@@ -148,6 +152,7 @@ int main(int argc, char *argv[])
 		if (nbr_vies_perdus != 0) // Eviter si on réussit du premier coup que l'affichage affiche un éche
 			afficherEchec(nbr_vies_perdus);
 	}
+	
 	pthread_join(threadEvenements, NULL);
 
 }
@@ -284,15 +289,25 @@ void *FctThreadEvenements(void *)
 }
 void *FctThreadDKJr(void *p)
 {
-	struct sigaction act;
+	struct sigaction act, act1;
 	struct timespec temps;
-
+	sigset_t mask;
 	/* Armement du signal sigquit */
 	act.sa_flags = 0;
 	act.sa_handler = HandlerSIGQUIT;
 	sigemptyset(&act.sa_mask);
 	sigaction(SIGQUIT, &act, NULL);
 
+
+	/* Armement du signal sigquit */
+	act1.sa_flags = 0;
+	act1.sa_handler = HandlerSIGINT;
+	sigemptyset(&act1.sa_mask);
+	sigaction(SIGINT, &act1, NULL);
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigprocmask(SIG_UNBLOCK, &mask, NULL);
 	bool on = true;
 	pthread_mutex_lock(&mutexGrilleJeu);
 	setGrilleJeu(3, 1, DKJR);
@@ -324,6 +339,7 @@ void *FctThreadDKJr(void *p)
 				}
 				break;
 			case SDLK_RIGHT:
+
 				if (positionDKJr < 7)
 				{
 					setGrilleJeu(3, positionDKJr);
@@ -335,7 +351,15 @@ void *FctThreadDKJr(void *p)
 				}
 				break;
 			case SDLK_UP:
-				if (positionDKJr == 1 || positionDKJr == 5)
+
+				if (grilleJeu[2][positionDKJr].type == CORBEAU) {
+						pthread_kill(grilleJeu[2][positionDKJr].tid, SIGUSR1);
+						nbr_vies_perdus++;
+						effacerCarres(9, (positionDKJr * 2) + 7, 4, 4);
+						setGrilleJeu(3, positionDKJr);
+						on = 0;
+				}
+				else if (positionDKJr == 1 || positionDKJr == 5)
 				{
 					setGrilleJeu(3, positionDKJr);
 					etatDKJr = LIANE_BAS;
@@ -641,10 +665,11 @@ void *FctThreadEnnemis(void *)
 
 	while (nbr_vies_perdus != 3)
 	{
-		type_enemis = rand() % 2;
+		type_enemis = 0; // rand() % 2;
 		if (type_enemis == 0) {
 			if (pthread_create(&ThreadCorbeau, NULL, FctThreadCorbeau, NULL) != 0)
 				perror("Thread corbeau erreur !\n");
+			printf("Thread corbeau crée ! \n");
 		}
 		else {
 			if (pthread_create(&ThreadCroco, NULL, FctThreadCroco, NULL) != 0)
@@ -655,11 +680,58 @@ void *FctThreadEnnemis(void *)
 		
 		nanosleep(&temps, NULL);
 		
-	}
+		}
 }
 void *FctThreadCorbeau(void *p)
 {
-	printf("Thread corbeau crée ! \n");
+	sigset_t mask;
+	struct timespec temps = {0, 700000000};
+	int position = 8;
+	
+	int *pSpec; //Variable stockant la position horizontale sur la grille.
+
+	struct sigaction act;
+
+	/* Armement du signal sigquit */
+	act.sa_flags = 0;
+	act.sa_handler = HandlerSIGUSR1;
+	sigemptyset(&act.sa_mask);
+	sigaction(SIGUSR1, &act, NULL);
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGUSR1);
+	sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
+	pthread_once(&controleur, initCle); 
+	if ((pSpec = (int*)pthread_getspecific(keySpec)) == NULL) 
+	{
+		
+		pSpec = (int *)malloc(sizeof(int));
+		pthread_setspecific(keySpec, pSpec);
+		*pSpec = 0;
+	}
+
+	while(position <=22)
+	{
+		if (grilleJeu[2][*pSpec].type == DKJR){
+			pthread_kill(threadDKJr, SIGINT);
+			pthread_exit(0);
+		}
+
+		afficherCorbeau(position, (*(int*)pthread_getspecific(keySpec) % 2) + 1);
+		setGrilleJeu(2, *(int*)pthread_getspecific(keySpec), CORBEAU,pthread_self());
+		
+		if (pthread_setspecific(keySpec, pSpec))
+			perror("Erreur de setspecific\n");
+		
+		position = position + 2;
+		*(int*)pthread_getspecific(keySpec)+=1;
+		
+		nanosleep(&temps, NULL);
+		
+		setGrilleJeu(2, *(int*)pthread_getspecific(keySpec) -1);
+		effacerCarres(9, position -2, 2, 2);
+	}
 }
 void *FctThreadCroco(void *p)
 {
@@ -679,4 +751,34 @@ void HandlerSIGALRM(int sig)
 		delaiEnnemis = delaiEnnemis - 250;
 		alarm(15);
 	}
+}
+void HandlerSIGUSR1(int sig)
+{
+	long varspec = (long)pthread_getspecific(keySpec);//Pour la compilation
+
+	printf("SIGUSR1 pour le thread %u (%ld)\n", (unsigned int)pthread_self(), varspec);
+	setGrilleJeu(2, varspec);
+	effacerCarres(9, varspec *2 +7, 2, 2);
+	pthread_exit(0);
+}
+void HandlerSIGINT(int sig)
+{
+	effacerCarres(9, (positionDKJr * 2) + 7, 4, 4);
+	setGrilleJeu(2, positionDKJr);
+	pthread_mutex_unlock(&mutexEvenement);
+	pthread_mutex_unlock(&mutexGrilleJeu);
+	nbr_vies_perdus++;
+	
+	pthread_exit(0);
+}
+void DestructeurVS(void* p)
+{
+
+	printf("Destruction de la variable specifique\n");
+	free(p);
+}
+void initCle()
+{
+	printf("Initialisation de la clé \n");
+	pthread_key_create(&keySpec, DestructeurVS);
 }
