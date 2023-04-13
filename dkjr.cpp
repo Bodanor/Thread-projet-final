@@ -284,6 +284,7 @@ void *FctThreadDKJr(void *p)
 	struct sigaction act, act1, act2, act3;
 	struct timespec temps;
 	sigset_t mask;
+	int i = 0;
 	/* Armement du signal sigquit */
 	act.sa_flags = 0;
 	act.sa_handler = HandlerSIGQUIT;
@@ -327,7 +328,6 @@ void *FctThreadDKJr(void *p)
 	pthread_mutex_unlock(&mutexGrilleJeu);
 
 	
-
 	bool on = true;
 	
 	while (on)
@@ -539,10 +539,11 @@ void *FctThreadDKJr(void *p)
 					positionDKJr--;
 					setGrilleJeu(0, positionDKJr, DKJR);
 					
-
+				
 					/* Si il attrape la clé */
 					if (grilleJeu[0][1].type == CLE)
 					{
+
 						nanosleep(&temps, NULL);
 
 						effacerCarres(5, (positionDKJr * 2) + 8, 3, 3);
@@ -557,6 +558,19 @@ void *FctThreadDKJr(void *p)
 						MAJDK = true;
 						pthread_mutex_unlock(&mutexDK);
 						pthread_cond_signal(&condDK);
+
+						//On verif si il y'a un corbeau et/ou un croco dans la zone décrite dans le pdf
+						while (i < 3) {
+							if (grilleJeu[2][i].type == CORBEAU)
+								pthread_kill(grilleJeu[2][i].tid, SIGUSR1);
+							i++;
+						}
+						i = 0;
+						while (i < 3) {
+							if (grilleJeu[3][i+1].type == CROCO)//Etant donné que la zone a surveillé se trouve entre 1 et 4 on fait i+1 car i varie de 0 à 3
+								pthread_kill(grilleJeu[3][i+1].tid, SIGUSR2);
+							i++;
+						}
 
 						/* Augmenter le score */
 						pthread_mutex_lock(&mutexScore);
@@ -719,7 +733,7 @@ void *FctThreadEnnemis(void *)
 
 	while (nbr_vies_perdus != 3)
 	{
-		type_enemis = rand() % 2;
+		type_enemis = 1;//rand() % 2;
 		if (type_enemis == 0)
 		{
 			if (pthread_create(&ThreadCorbeau, NULL, FctThreadCorbeau, NULL) != 0)
@@ -736,8 +750,6 @@ void *FctThreadEnnemis(void *)
 		temps.tv_nsec = (delaiEnnemis % 1000) * 1000000;
 
 		nanosleep(&temps, NULL);
-
-		pthread_join(ThreadCroco, NULL);
 	}
 }
 void *FctThreadCorbeau(void *p)
@@ -895,8 +907,9 @@ void HandlerSIGUSR1(int sig)
 	int *varspec = (int*)pthread_getspecific(keySpec); // Pour la compilation
 
 	printf("SIGUSR1 pour le thread %u (%ld)\n", (unsigned int)pthread_self(), *varspec);
-	setGrilleJeu(2, *varspec);
-	effacerCarres(9, *varspec * 2 + 7, 2, 2);
+	printf("POSITION HORIZONTALE : %d\n", *varspec);
+	setGrilleJeu(2, (*varspec)-1);
+	effacerCarres(9, (*varspec)* 2 + 6, 2, 2);
 	pthread_exit(0);
 }
 void HandlerSIGUSR2(int sig)
@@ -904,8 +917,9 @@ void HandlerSIGUSR2(int sig)
 	S_CROCO *varspec = (S_CROCO*)pthread_getspecific(keySpec); // Pour la compilation
 
 	printf("SIGUSR2 pour le thread %u (%ld)\n", (unsigned int)pthread_self(), varspec->position);
+	printf("POSITION HORIZONTALE : %d\n", varspec->position);
 	setGrilleJeu(3, varspec->position);
-	effacerCarres(12, varspec->position * 2 + 8, 1, 1);
+	effacerCarres(12, varspec->position* 2 + 8, 1, 1);
 	pthread_exit(0);
 }
 void HandlerSIGINT(int sig)
