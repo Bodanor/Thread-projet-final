@@ -201,7 +201,7 @@ void *FctThreadCle(void *p)
 		effacerCarres(4, 12, 1, 1);
 
 		/* Si catch de la cle */
-		if (grilleJeu[0][1].type == DKJR)
+		if (grilleJeu[0][2].type == DKJR)
 		{
 			effacerCarres(3, 11, 1, 4);
 			nanosleep(&temps, NULL);
@@ -243,7 +243,7 @@ void *FctThreadEvenements(void *)
 	{
 
 		evt = lireEvenement();
-
+		
 		pthread_mutex_lock(&mutexEvenement);
 
 		switch (evt)
@@ -367,6 +367,7 @@ void *FctThreadDKJr(void *p)
 
 				if (grilleJeu[2][positionDKJr].type == CORBEAU)
 				{
+					printf("%ul\n", grilleJeu[2][positionDKJr].tid);
 					pthread_kill(grilleJeu[2][positionDKJr].tid, SIGUSR1);
 					nbr_vies_perdus++;
 					effacerCarres(9, (positionDKJr * 2) + 7, 4, 4);
@@ -534,17 +535,19 @@ void *FctThreadDKJr(void *p)
 					temps.tv_nsec = 700000000;
 					effacerCarres(7, (positionDKJr * 2) + 7, 2, 2);
 					afficherDKJr(6, (positionDKJr * 2) + 7, 9);
+					setGrilleJeu(1, positionDKJr);
+					positionDKJr--;
 					setGrilleJeu(0, positionDKJr, DKJR);
+					
 
 					/* Si il attrape la clé */
 					if (grilleJeu[0][1].type == CLE)
 					{
-						setGrilleJeu(0, 1, DKJR);
 						nanosleep(&temps, NULL);
 
-						positionDKJr--;
-						effacerCarres(5, (positionDKJr * 2) + 8, 3, 2);
+						effacerCarres(5, (positionDKJr * 2) + 8, 3, 3);
 						afficherDKJr(6, (positionDKJr * 2) + 7, 10);
+						setGrilleJeu(0, positionDKJr);
 						nanosleep(&temps, NULL);
 
 						effacerCarres(3, 11, 3, 3);
@@ -565,9 +568,10 @@ void *FctThreadDKJr(void *p)
 					else
 					{
 						nanosleep(&temps, NULL);
-						positionDKJr--;
-						effacerCarres(5, (positionDKJr * 2) + 8, 3, 2);
+						
+						effacerCarres(5, (positionDKJr * 2) + 8, 3, 3);
 						afficherDKJr(7, (positionDKJr * 2) + 7, 12);
+						setGrilleJeu(0, positionDKJr);
 						nanosleep(&temps, NULL);
 
 						effacerCarres(6, (positionDKJr * 2) + 7, 3, 2);
@@ -580,7 +584,7 @@ void *FctThreadDKJr(void *p)
 						nbr_vies_perdus++;
 					}
 					on = 0;
-					setGrilleJeu(0, positionDKJr + 1);
+				
 				}
 				break;
 			case SDLK_RIGHT:
@@ -715,7 +719,7 @@ void *FctThreadEnnemis(void *)
 
 	while (nbr_vies_perdus != 3)
 	{
-		type_enemis = 1; // rand() % 2;
+		type_enemis = rand() % 2;
 		if (type_enemis == 0)
 		{
 			if (pthread_create(&ThreadCorbeau, NULL, FctThreadCorbeau, NULL) != 0)
@@ -784,7 +788,7 @@ void *FctThreadCorbeau(void *p)
 
 		nanosleep(&temps, NULL);
 
-		setGrilleJeu(2, *pSpec - 1);
+		setGrilleJeu(2, *(pSpec) - 1);
 		effacerCarres(9, position - 2, 2, 2);
 	}
 }
@@ -820,7 +824,7 @@ void *FctThreadCroco(void *p)
 	pSpec->haut = 1;
 	pSpec->position = 2;
 
-	while(pSpec->position != 7)
+	while(pSpec->position < 7)
 	{
 		if (grilleJeu[1][pSpec->position].type == DKJR)
 		{
@@ -830,7 +834,11 @@ void *FctThreadCroco(void *p)
 		}
 		else
 		{
-			afficherCroco(pSpec->position * 2 + 7, (pSpec->position % 2) + 1);
+			if(pSpec->position%2==0)
+				afficherCroco(pSpec->position * 2 + 7, 2);
+			else
+				afficherCroco(pSpec->position * 2 + 7, 1);
+
 			setGrilleJeu(1, pSpec->position, CROCO, pthread_self());
 		}
 		
@@ -867,75 +875,6 @@ void *FctThreadCroco(void *p)
 		pSpec->position -= 1;
 	}
 	
-	// while (pSpec->position != 1)
-	// {
-		
-	// 	if (pSpec->haut == 1)
-	// 	{
-	// 		if (pSpec->position == 8)
-	// 		{
-	// 			afficherCroco(pSpec->position, 3);
-	// 			pSpec->position += 1;
-	// 		}
-	// 		else
-	// 		{
-	// 			if (grilleJeu[1][pSpec->position].type == DKJR)
-	// 			{
-	// 				pthread_kill(threadDKJr, SIGHUP);
-	// 				//nbr_vies_perdus++;
-	// 				pthread_exit(0);
-	// 			}
-	// 			else
-	// 			{
-	// 				afficherCroco(pSpec->position * 2 + 7, (pSpec->position % 2) + 1);
-	// 				setGrilleJeu(1, pSpec->position, CROCO, pthread_self());
-	// 				pSpec->position += 1;
-	// 			}
-	// 		}
-			
-	// 	}
-	// 	else
-	// 	{
-	// 		if (grilleJeu[3][pSpec->position-1].type == DKJR)
-	// 		{
-	// 			//WALLAH JE PUE LE CACA (martin)
-	// 			pthread_kill(threadDKJr, SIGCHLD);
-				
-	// 			//nbr_vies_perdus++;
-	// 			pthread_exit(0);
-	// 		}
-	// 		else
-	// 		{
-	// 			pSpec->position -= 1;
-	// 			afficherCroco((pSpec->position * 2) + 8, (pSpec->position % 2) + 4);
-	// 			setGrilleJeu(3, pSpec->position, CROCO, pthread_self());
-	// 		}
-
-	// 	}
-	// 	nanosleep(&temps, NULL);
-
-	// 	/* Effacement du précedent crocro */
-	// 	if (pSpec->haut == 1)
-	// 	{
-	// 		if (pSpec->position > 8)
-	// 		{
-	// 			pSpec->position -= 1;
-	// 			effacerCarres(9, 23, 1, 1);
-	// 			pSpec->haut = 0;
-	// 			setGrilleJeu(3, pSpec->position-1, CROCO, pthread_self());
-	// 		}
-	// 		else
-	// 		{
-	// 			effacerCarres(8, (pSpec->position * 2) + 5, 1, 1);
-	// 			setGrilleJeu(1, pSpec->position - 1);
-	// 		}
-	// 	}
-	// 	else
-	// 	{
-	// 		effacerCarres(12, (pSpec->position * 2) + 8, 1, 1);
-	// 		setGrilleJeu(3, pSpec->position);
-	// 	}
-	// }
 }
 
 void HandlerSIGQUIT(int sig)
@@ -953,11 +892,11 @@ void HandlerSIGALRM(int sig)
 }
 void HandlerSIGUSR1(int sig)
 {
-	long varspec = (long)pthread_getspecific(keySpec); // Pour la compilation
+	int *varspec = (int*)pthread_getspecific(keySpec); // Pour la compilation
 
-	printf("SIGUSR1 pour le thread %u (%ld)\n", (unsigned int)pthread_self(), varspec);
-	setGrilleJeu(2, varspec);
-	effacerCarres(9, varspec * 2 + 7, 2, 2);
+	printf("SIGUSR1 pour le thread %u (%ld)\n", (unsigned int)pthread_self(), *varspec);
+	setGrilleJeu(2, *varspec);
+	effacerCarres(9, *varspec * 2 + 7, 2, 2);
 	pthread_exit(0);
 }
 void HandlerSIGUSR2(int sig)
