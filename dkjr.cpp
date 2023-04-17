@@ -428,10 +428,10 @@ void *FctThreadDKJr(void *p)
 			case SDLK_DOWN:
 				if (grilleJeu[3][positionDKJr].type == CROCO)
 				{
+					setGrilleJeu(2, positionDKJr);
 					pthread_kill(grilleJeu[3][positionDKJr].tid, SIGUSR2);
 					nbr_vies_perdus++;
 					effacerCarres(10, (positionDKJr * 2) + 7, 2, 2);
-					setGrilleJeu(3, positionDKJr);
 					on = 0;
 				}
 				else {
@@ -733,7 +733,7 @@ void *FctThreadEnnemis(void *)
 
 	while (nbr_vies_perdus != 3)
 	{
-		type_enemis = 1;//rand() % 2;
+		type_enemis = rand() % 2;
 		if (type_enemis == 0)
 		{
 			if (pthread_create(&ThreadCorbeau, NULL, FctThreadCorbeau, NULL) != 0)
